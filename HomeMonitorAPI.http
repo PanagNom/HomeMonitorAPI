@@ -1,0 +1,6 @@
+@HomeMonitorAPI_HostAddress = http://localhost:5252
+
+GET {{HomeMonitorAPI_HostAddress}}/sensor/
+Accept: application/json
+
+###
