@@ -1,12 +1,14 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using HomeMonitorAPI.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace HomeMonitorAPI.Data
 {
-    public class HomeMonitorDbContext: DbContext
+    public class HomeMonitorDbContext : IdentityDbContext<ApplicationUser>
     {
         public HomeMonitorDbContext(DbContextOptions<HomeMonitorDbContext> options) : base(options)
         {
         }
-        public DbSet<HomeMonitorAPI.Models.Sensor> Sensors { get; set; }
+        public DbSet<Sensor> Sensors { get; set; }
     }
 }

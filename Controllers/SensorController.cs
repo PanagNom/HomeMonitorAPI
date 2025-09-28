@@ -1,5 +1,6 @@
 using HomeMonitorAPI.Data.Interfaces;
 using HomeMonitorAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HomeMonitorAPI.Controllers
@@ -18,10 +19,11 @@ namespace HomeMonitorAPI.Controllers
 
         [HttpGet]
         [Route("GetSensorData")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Sensor?>> Get()
         {
             var reading =  await _sensorRepository.GetSensorData();
-
+            var test =  User.ToString();
             if(reading == null)
             {
                 return NotFound();
