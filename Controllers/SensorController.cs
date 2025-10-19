@@ -31,5 +31,19 @@ namespace HomeMonitorAPI.Controllers
 
             return Ok(reading);
         }
+
+        [HttpPost]
+        [Route("AddSensorData")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<Sensor?>> Add([FromBody ] Sensor sensorData)
+        {
+            if (sensorData == null) {
+                return BadRequest("Sensor data is null.");
+            }
+
+            await _sensorRepository.AddSensorAsync(sensorData);
+
+            return Ok();
+        }
     }
 }
