@@ -20,6 +20,8 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddTransient<IAuthService, AuthService>();
 
+builder.Services.AddScoped<IAuthenticationRepository, AuthenticationRepository>();
+
 builder.Services.AddDbContext<HomeMonitorDbContext>(
     options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? 
     throw new InvalidOperationException("Connection string 'HomeMonitorDbContext' not found.")

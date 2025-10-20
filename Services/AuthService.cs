@@ -1,4 +1,4 @@
-﻿using HomeMonitorAPI.Data;
+﻿using HomeMonitorAPI.Data.Interfaces;
 using HomeMonitorAPI.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -13,17 +13,29 @@ namespace HomeMonitorAPI.Services
         private readonly UserManager<ApplicationUser> userManager;
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IConfiguration _configuration;
-        public AuthService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration)
+        private readonly ILogger _logger;
+        private readonly IAuthenticationRepository _authRepository;
+
+        public AuthService(UserManager<ApplicationUser> userManager, 
+            RoleManager<IdentityRole> roleManager, IConfiguration configuration, 
+            ILogger logger, IAuthenticationRepository authRepository)
         {
             this.userManager = userManager;
             this.roleManager = roleManager;
             _configuration = configuration;
+            _logger = logger;
+            _authRepository = authRepository;
         }
-        public async Task<(int, string)> Registration(Registration model, string role)
+        
+        public async Task<(int, Registration)> Registration(Registration model, string role)
         {
             var userExists = await userManager.FindByNameAsync(model.Username);
             if (userExists != null)
-                return (0, "User already exists");
+            {
+                model.Message = "User already exists";
+                return (0, model);
+            }
+                
 
             ApplicationUser user = new()
             {
@@ -35,29 +47,49 @@ namespace HomeMonitorAPI.Services
             };
             var createUserResult = await userManager.CreateAsync(user, model.Password);
             if (!createUserResult.Succeeded)
-                return (0, "User creation failed! Please check user details and try again.");
-
+            {
+                model.Message = "User creation failed! Please check user details and try again.";
+                return (0, model);
+            }
+                
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));
 
             if (await roleManager.RoleExistsAsync(role))
                 await userManager.AddToRoleAsync(user, role);
 
-            return (1, "User created successfully!");
+            Registration modelToSend = new()
+            {
+                Id = user.Id,
+                Username = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                Message = "User created successfully!"
+            };
+
+            return (1, modelToSend);
         }
 
-        public async Task<(int, string)> Login(Login model)
+        public async Task<(int, Models.Login)> Login(Login model)
         {
             var user = await userManager.FindByNameAsync(model.Username);
             if (user == null)
-                return (0, "Invalid username");
+            {
+                model.Message = "Invalid username";
+                return (0, model);
+            }
+                
             if (!await userManager.CheckPasswordAsync(user, model.Password))
-                return (0, "Invalid password");
+            {
+                model.Message = "Invalid password";
+                return (0, model);
+            }
 
             var userRoles = await userManager.GetRolesAsync(user);
             var authClaims = new List<Claim>
             {
-               new Claim(ClaimTypes.Name, user.UserName),
+               new Claim(ClaimTypes.Name, user.UserName!),
                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
 
@@ -66,9 +98,23 @@ namespace HomeMonitorAPI.Services
                 authClaims.Add(new Claim(ClaimTypes.Role, userRole));
             }
             string token = GenerateToken(authClaims);
-            return (1, token);
-        }
+            
+            Login modelToSend = new()
+            {
+                Id = user.Id,
+                Username = user.UserName,
+                Token = token,
+                ExpiryDate = DateTime.UtcNow.AddMinutes(1),
+                RefreshToken = await GenerateRefreshToken(user.Id),
+                Message = "Login successful"
+            };
+            
+            user.Token = token;
+            user.TokenExpiry = modelToSend.ExpiryDate;
+            await userManager.UpdateAsync(user);
 
+            return (1, modelToSend);
+        }
 
         private string GenerateToken(IEnumerable<Claim> claims)
         {
@@ -88,6 +134,58 @@ namespace HomeMonitorAPI.Services
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+        
+        private async Task<string?> GenerateRefreshToken(string userId)
+        {
+            var _RefreshTokenExpiryTimeInHours = Convert.ToInt64(_configuration["Jwt:RefreshTokenExpiryTimeInHour"]);
+            return await _authRepository.AddRefreshToken(userId);
+        }
+
+        public async Task<(int, string)> Refresh(string userId)
+        {
+            if(string.IsNullOrEmpty(userId))
+            {
+                return (0, "Invalid user ID");
+            }
+
+            var newRefreshToken = await GenerateRefreshToken(userId);
+
+            if (string.IsNullOrEmpty(newRefreshToken))
+            {
+                return (0, "Failed to generate refresh token");
+            }
+            return (1, newRefreshToken);
+        }
     
+        public async Task<string?> ValidateRefreshToken(string token)
+        {
+            var refreshToken = await _authRepository.GetRefreshToken(token);
+            if (refreshToken is null)
+            {
+                _logger.LogWarning("Invalid or expired refresh token.");
+                return null;
+            }
+            await _authRepository.DeleteRefreshToken(refreshToken);
+
+            var user = await userManager.FindByIdAsync(refreshToken.UserId);
+            if (user is null)
+            {
+                _logger.LogWarning("User not found for the provided refresh token.");
+                return null;
+            }
+            var userRoles = await userManager.GetRolesAsync(user);
+            var authClaims = new List<Claim>
+            {
+               new Claim(ClaimTypes.Name, user.UserName!),
+               new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            };
+
+            foreach (var userRole in userRoles)
+            {
+                authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+            }
+
+            return GenerateToken(authClaims);
+        }
     }
 }

@@ -4,7 +4,6 @@ namespace HomeMonitorAPI.Models
 {
     public class Registration
     {
-
         [Required(ErrorMessage = "User Name is required")]
         public string Username { get; set; }
         [Required(ErrorMessage = "Name is required")]
@@ -17,5 +16,8 @@ namespace HomeMonitorAPI.Models
 
         [Required(ErrorMessage = "Password is required")]
         public string Password { get; set; }
+
+        public string Id  { get; set; }
+        public string Message { get; set; }
     }
 }
