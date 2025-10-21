@@ -43,18 +43,20 @@ namespace HomeMonitorAPI.Controllers
 
         [HttpPost]
         [Route("registeration")]
-        public async Task<IActionResult> Register(Registration registration)
+        public async Task<IActionResult> Register(RegistrationRequest registrationRequest)
         {
             try
             {
                 if (!ModelState.IsValid)
                     return BadRequest("Invalid payload");
-                var (status, message) = await _authService.Registration(registration, UserRoles.Admin);
-                if (status == 0)
+                
+                RegistrationResponse registrationResponse = await _authService.Registration(registrationRequest, UserRoles.Admin);
+                
+                if (registrationResponse.Status == 0)
                 {
-                    return BadRequest(message);
+                    return BadRequest(registrationResponse.Message);
                 }
-                return CreatedAtAction(nameof(Register), registration);
+                return CreatedAtAction(nameof(Register), registrationRequest);
 
             }
             catch (Exception ex)

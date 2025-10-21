@@ -27,29 +27,33 @@ namespace HomeMonitorAPI.Services
             _authRepository = authRepository;
         }
         
-        public async Task<(int, Registration)> Registration(Registration model, string role)
+        public async Task<RegistrationResponse> Registration(RegistrationRequest registrationRequest, string role)
         {
-            var userExists = await userManager.FindByNameAsync(model.Username);
+            RegistrationResponse registrationResponse = new();
+            var userExists = await userManager.FindByNameAsync(registrationRequest.Username);
             if (userExists != null)
             {
-                model.Message = "User already exists";
-                return (0, model);
+                registrationResponse.Message = "User already exists";
+                registrationResponse.Status = 0;
+                return (registrationResponse);
             }
-                
 
             ApplicationUser user = new()
             {
-                Email = model.Email,
+                Email = registrationRequest.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
-                UserName = model.Username,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
+                UserName = registrationRequest.Username,
+                FirstName = registrationRequest.FirstName ?? string.Empty,
+                LastName = registrationRequest.LastName ?? string.Empty,
             };
-            var createUserResult = await userManager.CreateAsync(user, model.Password);
+
+            var createUserResult = await userManager.CreateAsync(user, registrationRequest.Password);
             if (!createUserResult.Succeeded)
             {
-                model.Message = "User creation failed! Please check user details and try again.";
-                return (0, model);
+                registrationResponse.Message = "User creation failed! Please check user details and try again.";
+                registrationResponse.Status = 0;
+
+                return (registrationResponse);
             }
                 
             if (!await roleManager.RoleExistsAsync(role))
@@ -58,17 +62,18 @@ namespace HomeMonitorAPI.Services
             if (await roleManager.RoleExistsAsync(role))
                 await userManager.AddToRoleAsync(user, role);
 
-            Registration modelToSend = new()
+            registrationResponse = new()
             {
                 Id = user.Id,
                 Username = user.UserName,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email,
-                Message = "User created successfully!"
+                Message = "User created successfully!",
+                Status = 1
             };
 
-            return (1, modelToSend);
+            return (registrationResponse);
         }
 
         public async Task<(int, Models.Login)> Login(Login model)

@@ -32,16 +32,6 @@ namespace HomeMonitorAPI.Data.Repositories
 
             return refreshToken;
         }
-        async Task IAuthenticationRepository.DeleteRefreshToken(RefreshToken token)
-        {
-            var refreshToken = await GetRefreshToken(token.UserId);
-            if (refreshToken is null)
-            {
-                return ;
-            }
-            _context.RefreshTokens.Remove(refreshToken);
-            _context.SaveChanges();
-        }
         public async Task<string?> AddRefreshToken(string userId)
         {
             if (string.IsNullOrEmpty(userId))
@@ -60,5 +50,16 @@ namespace HomeMonitorAPI.Data.Repositories
 
             return refreshToken.Token;
         }
+        async Task IAuthenticationRepository.DeleteRefreshToken(RefreshToken token)
+        {
+            var refreshToken = await GetRefreshToken(token.UserId);
+            if (refreshToken is null)
+            {
+                return ;
+            }
+            _context.RefreshTokens.Remove(refreshToken);
+            _context.SaveChanges();
+        }
+        
     }
 }
