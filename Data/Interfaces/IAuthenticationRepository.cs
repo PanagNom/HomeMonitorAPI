@@ -6,6 +6,6 @@ namespace HomeMonitorAPI.Data.Interfaces
     {
         Task<RefreshToken?> GetRefreshToken(string userId);
         Task<string?> AddRefreshToken(string userId, string jti);
-        Task DeleteRefreshToken(RefreshToken token);
+        Task DeleteRefreshToken(string userId);
     }
 }

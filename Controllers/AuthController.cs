@@ -68,16 +68,16 @@ namespace HomeMonitorAPI.Controllers
 
         [HttpPost]
         [Route("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] string userId)
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest refreshRequest)
         {
             try
             {
-                if (string.IsNullOrEmpty(userId))
+                if (string.IsNullOrEmpty(refreshRequest.UserId))
                     return BadRequest("Invalid payload");
-                var (status, message) = await _authService.Refresh(userId);
-                if (status == 0)
-                    return BadRequest(message);
-                return Ok(message);
+                RefreshResponse refreshResponse = await _authService.Refresh(refreshRequest);
+                if (refreshResponse.Status == 0)
+                    return BadRequest(refreshResponse.Message);
+                return Ok(refreshResponse.Message);
             }
             catch (Exception ex)
             {

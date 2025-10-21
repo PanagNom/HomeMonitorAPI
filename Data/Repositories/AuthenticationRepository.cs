@@ -45,14 +45,15 @@ namespace HomeMonitorAPI.Data.Repositories
                 ExpiryDate = DateTime.UtcNow.AddDays(7),
                 Invalidated = false
             };
+
             await _context.RefreshTokens.AddAsync(refreshToken);
             await _context.SaveChangesAsync();
 
             return refreshToken.Token;
         }
-        async Task IAuthenticationRepository.DeleteRefreshToken(RefreshToken token)
+        async Task IAuthenticationRepository.DeleteRefreshToken(string userId)
         {
-            var refreshToken = await GetRefreshToken(token.UserId);
+            var refreshToken = await GetRefreshToken(userId);
             if (refreshToken is null)
             {
                 return ;
@@ -60,6 +61,5 @@ namespace HomeMonitorAPI.Data.Repositories
             _context.RefreshTokens.Remove(refreshToken);
             _context.SaveChanges();
         }
-        
     }
 }

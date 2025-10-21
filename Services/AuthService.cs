@@ -127,20 +127,52 @@ namespace HomeMonitorAPI.Services
             return (loginResponse);
         }
 
-        public async Task<(int, string)> Refresh(string userId)
+        public async Task<RefreshResponse> Refresh(RefreshRequest refreshRequest)
         {
-            if (string.IsNullOrEmpty(userId))
+            RefreshResponse refreshResponse = new();
+
+            if (refreshRequest is null)
             {
-                return (0, "Invalid user ID");
+                refreshResponse.Status = 0;
+                refreshResponse.Message = "Empty refresh request.";
+                return (refreshResponse);
+            }
+            if(!await ValidateRefreshToken(refreshRequest.UserId))
+                            {
+                refreshResponse.Status = 0;
+                refreshResponse.Message = "Invalid refresh token.";
+                return (refreshResponse);
             }
 
-            var newRefreshToken = await GenerateRefreshToken(userId, "");
+            var user = await userManager.FindByIdAsync(refreshRequest.UserId);
 
-            if (string.IsNullOrEmpty(newRefreshToken))
+            var userRoles = await userManager.GetRolesAsync(user);
+            var jti  = Guid.NewGuid().ToString();
+
+            if (user is null)
             {
-                return (0, "Failed to generate refresh token");
+                refreshResponse.Status = 0;
+                refreshResponse.Message = "User not found.";
+                return (refreshResponse);
             }
-            return (1, newRefreshToken);
+
+            var authClaims = new List<Claim>
+            {
+               new Claim(ClaimTypes.Name, user.UserName!),
+               new Claim(JwtRegisteredClaimNames.Jti, jti),
+            };
+
+            foreach (var userRole in userRoles)
+            {
+                authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+            }
+
+            refreshResponse.Token = GenerateToken(authClaims);
+            refreshResponse.RefreshToken = await GenerateRefreshToken(user.Id, jti);
+            refreshResponse.Status = 1;
+            refreshResponse.Message = "Token refreshed successfully.";
+
+            return (refreshResponse);
         }
 
         private string GenerateToken(IEnumerable<Claim> claims)
@@ -167,35 +199,22 @@ namespace HomeMonitorAPI.Services
             return await _authRepository.AddRefreshToken(userId, jti);
         }
 
-        public async Task<string?> ValidateRefreshToken(string token)
+        private async Task<bool> ValidateRefreshToken(string userId)
         {
-            var refreshToken = await _authRepository.GetRefreshToken(token);
+            var refreshToken = await _authRepository.GetRefreshToken(userId);
             if (refreshToken is null)
             {
                 _logger.LogWarning("Invalid or expired refresh token.");
-                return null;
+                return false;
             }
-            await _authRepository.DeleteRefreshToken(refreshToken);
+            await _authRepository.DeleteRefreshToken(refreshToken.UserId);
 
-            var user = await userManager.FindByIdAsync(refreshToken.UserId);
-            if (user is null)
+            if (refreshToken.ExpiryDate < DateTime.UtcNow || refreshToken.Invalidated)
             {
-                _logger.LogWarning("User not found for the provided refresh token.");
-                return null;
+                _logger.LogWarning("Refresh token has expired.");
+                return false;
             }
-            var userRoles = await userManager.GetRolesAsync(user);
-            var authClaims = new List<Claim>
-            {
-               new Claim(ClaimTypes.Name, user.UserName!),
-               new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            };
-
-            foreach (var userRole in userRoles)
-            {
-                authClaims.Add(new Claim(ClaimTypes.Role, userRole));
-            }
-
-            return GenerateToken(authClaims);
+            return true;
         }
     }
 }
