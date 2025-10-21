@@ -32,7 +32,7 @@ namespace HomeMonitorAPI.Controllers
                 LoginResponse loginResponse = await _authService.Login(loginRequest);
                 if (loginResponse.Status == 0)
                     return BadRequest(loginResponse.Message);
-                return Ok(loginResponse.Message);
+                return Ok(loginResponse);
             }
             catch (Exception ex)
             {
@@ -56,7 +56,7 @@ namespace HomeMonitorAPI.Controllers
                 {
                     return BadRequest(registrationResponse.Message);
                 }
-                return CreatedAtAction(nameof(Register), registrationRequest);
+                return CreatedAtAction(nameof(Register), registrationResponse);
 
             }
             catch (Exception ex)
@@ -77,7 +77,7 @@ namespace HomeMonitorAPI.Controllers
                 RefreshResponse refreshResponse = await _authService.Refresh(refreshRequest);
                 if (refreshResponse.Status == 0)
                     return BadRequest(refreshResponse.Message);
-                return Ok(refreshResponse.Message);
+                return Ok(refreshResponse);
             }
             catch (Exception ex)
             {

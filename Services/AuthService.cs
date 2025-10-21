@@ -137,8 +137,9 @@ namespace HomeMonitorAPI.Services
                 refreshResponse.Message = "Empty refresh request.";
                 return (refreshResponse);
             }
-            if(!await ValidateRefreshToken(refreshRequest.UserId))
-                            {
+            
+            if(!await ValidateRefreshToken(refreshRequest))
+            {
                 refreshResponse.Status = 0;
                 refreshResponse.Message = "Invalid refresh token.";
                 return (refreshResponse);
@@ -199,15 +200,27 @@ namespace HomeMonitorAPI.Services
             return await _authRepository.AddRefreshToken(userId, jti);
         }
 
-        private async Task<bool> ValidateRefreshToken(string userId)
+        private async Task<bool> ValidateRefreshToken(RefreshRequest refreshRequest)
         {
-            var refreshToken = await _authRepository.GetRefreshToken(userId);
+            var refreshToken = await _authRepository.GetRefreshToken(refreshRequest.UserId);
             if (refreshToken is null)
             {
                 _logger.LogWarning("Invalid or expired refresh token.");
                 return false;
             }
             await _authRepository.DeleteRefreshToken(refreshToken.UserId);
+
+            if(refreshToken.Token != refreshRequest.RefreshToken)
+            {
+                _logger.LogWarning("Refresh token does not match.");
+                return false;
+            }
+
+            if (refreshToken.JwtId != refreshRequest.JTI)
+            {
+                _logger.LogWarning("Refresh token id does not match.");
+                return false;
+            }
 
             if (refreshToken.ExpiryDate < DateTime.UtcNow || refreshToken.Invalidated)
             {
