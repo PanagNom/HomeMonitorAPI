@@ -13,14 +13,14 @@ namespace HomeMonitorAPI.Data.Repositories
             _context = context;
         }
 
-        public async Task<RefreshToken?> GetRefreshToken(string token)
+        public async Task<RefreshToken?> GetRefreshToken(string userId)
         {
-            if (string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(userId))
             {
-                throw new ArgumentNullException(nameof(token), "token cannot be null or empty.");
+                throw new ArgumentNullException(nameof(userId), "User cannot be null or empty.");
             }
             var refreshToken = await _context.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == token && rt.Invalidated == false);
+                .FirstOrDefaultAsync(rt => rt.UserId == userId && rt.Invalidated == false);
             
             if(refreshToken?.ExpiryDate < DateTime.UtcNow)
             {
@@ -35,9 +35,7 @@ namespace HomeMonitorAPI.Data.Repositories
         public async Task<string?> AddRefreshToken(string userId, string jti)
         {
             if (string.IsNullOrEmpty(userId))
-            {
                 throw new ArgumentNullException(nameof(userId));
-            }
 
             var refreshToken = new Models.RefreshToken
             {

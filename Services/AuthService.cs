@@ -113,6 +113,7 @@ namespace HomeMonitorAPI.Services
             loginResponse = new()
             {
                 Id = user.Id,
+                JWTID = jti,
                 Username = user.UserName?? string.Empty,
                 Token = token,
                 ExpiryDate = DateTime.UtcNow.AddMinutes(1),
@@ -124,6 +125,22 @@ namespace HomeMonitorAPI.Services
             await userManager.UpdateAsync(user);
 
             return (loginResponse);
+        }
+
+        public async Task<(int, string)> Refresh(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                return (0, "Invalid user ID");
+            }
+
+            var newRefreshToken = await GenerateRefreshToken(userId, "");
+
+            if (string.IsNullOrEmpty(newRefreshToken))
+            {
+                return (0, "Failed to generate refresh token");
+            }
+            return (1, newRefreshToken);
         }
 
         private string GenerateToken(IEnumerable<Claim> claims)
@@ -150,22 +167,6 @@ namespace HomeMonitorAPI.Services
             return await _authRepository.AddRefreshToken(userId, jti);
         }
 
-        public async Task<(int, string)> Refresh(string userId)
-        {
-            if(string.IsNullOrEmpty(userId))
-            {
-                return (0, "Invalid user ID");
-            }
-
-            var newRefreshToken = await GenerateRefreshToken(userId, "");
-
-            if (string.IsNullOrEmpty(newRefreshToken))
-            {
-                return (0, "Failed to generate refresh token");
-            }
-            return (1, newRefreshToken);
-        }
-    
         public async Task<string?> ValidateRefreshToken(string token)
         {
             var refreshToken = await _authRepository.GetRefreshToken(token);
