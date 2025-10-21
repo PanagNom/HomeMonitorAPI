@@ -32,15 +32,17 @@ namespace HomeMonitorAPI.Data.Repositories
 
             return refreshToken;
         }
-        public async Task<string?> AddRefreshToken(string userId)
+        public async Task<string?> AddRefreshToken(string userId, string jti)
         {
             if (string.IsNullOrEmpty(userId))
             {
                 throw new ArgumentNullException(nameof(userId));
             }
+
             var refreshToken = new Models.RefreshToken
             {
                 UserId = userId,
+                JwtId = jti,
                 Token = Guid.NewGuid().ToString(),
                 ExpiryDate = DateTime.UtcNow.AddDays(7),
                 Invalidated = false

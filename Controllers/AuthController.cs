@@ -23,16 +23,16 @@ namespace HomeMonitorAPI.Controllers
 
         [HttpPost]
         [Route("login")]
-        public async Task<IActionResult> Login([FromBody] Login login)
+        public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
             try
             {
                 if (!ModelState.IsValid)
                     return BadRequest("Invalid payload");
-                var (status, message) = await _authService.Login(login);
-                if (status == 0)
-                    return BadRequest(message);
-                return Ok(message);
+                LoginResponse loginResponse = await _authService.Login(loginRequest);
+                if (loginResponse.Status == 0)
+                    return BadRequest(loginResponse.Message);
+                return Ok(loginResponse.Message);
             }
             catch (Exception ex)
             {

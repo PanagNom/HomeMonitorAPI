@@ -76,26 +76,32 @@ namespace HomeMonitorAPI.Services
             return (registrationResponse);
         }
 
-        public async Task<(int, Models.Login)> Login(Login model)
+        public async Task<LoginResponse> Login(LoginRequest loginRequest)
         {
-            var user = await userManager.FindByNameAsync(model.Username);
+            LoginResponse loginResponse = new();
+
+            var user = await userManager.FindByNameAsync(loginRequest.Username);
             if (user == null)
             {
-                model.Message = "Invalid username";
-                return (0, model);
+                loginResponse.Message = "Invalid username";
+                loginResponse.Status = 0;
+                return (loginResponse);
             }
                 
-            if (!await userManager.CheckPasswordAsync(user, model.Password))
+            if (!await userManager.CheckPasswordAsync(user, loginRequest.Password))
             {
-                model.Message = "Invalid password";
-                return (0, model);
+                loginResponse.Message = "Invalid password";
+                loginResponse.Status = 0;
+                return (loginResponse);
             }
 
             var userRoles = await userManager.GetRolesAsync(user);
+            string jti = Guid.NewGuid().ToString();
+
             var authClaims = new List<Claim>
             {
                new Claim(ClaimTypes.Name, user.UserName!),
-               new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+               new Claim(JwtRegisteredClaimNames.Jti, jti),
             };
 
             foreach (var userRole in userRoles)
@@ -103,22 +109,21 @@ namespace HomeMonitorAPI.Services
                 authClaims.Add(new Claim(ClaimTypes.Role, userRole));
             }
             string token = GenerateToken(authClaims);
-            
-            Login modelToSend = new()
+
+            loginResponse = new()
             {
                 Id = user.Id,
-                Username = user.UserName,
+                Username = user.UserName?? string.Empty,
                 Token = token,
                 ExpiryDate = DateTime.UtcNow.AddMinutes(1),
-                RefreshToken = await GenerateRefreshToken(user.Id),
-                Message = "Login successful"
+                RefreshToken = await GenerateRefreshToken(user.Id, jti),
+                Message = "Login successful",
+                Status = 1,
             };
             
-            user.Token = token;
-            user.TokenExpiry = modelToSend.ExpiryDate;
             await userManager.UpdateAsync(user);
 
-            return (1, modelToSend);
+            return (loginResponse);
         }
 
         private string GenerateToken(IEnumerable<Claim> claims)
@@ -140,10 +145,9 @@ namespace HomeMonitorAPI.Services
             return tokenHandler.WriteToken(token);
         }
         
-        private async Task<string?> GenerateRefreshToken(string userId)
+        private async Task<string?> GenerateRefreshToken(string userId, string jti)
         {
-            var _RefreshTokenExpiryTimeInHours = Convert.ToInt64(_configuration["Jwt:RefreshTokenExpiryTimeInHour"]);
-            return await _authRepository.AddRefreshToken(userId);
+            return await _authRepository.AddRefreshToken(userId, jti);
         }
 
         public async Task<(int, string)> Refresh(string userId)
@@ -153,7 +157,7 @@ namespace HomeMonitorAPI.Services
                 return (0, "Invalid user ID");
             }
 
-            var newRefreshToken = await GenerateRefreshToken(userId);
+            var newRefreshToken = await GenerateRefreshToken(userId, "");
 
             if (string.IsNullOrEmpty(newRefreshToken))
             {
