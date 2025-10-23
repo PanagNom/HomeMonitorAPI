@@ -13,17 +13,15 @@ namespace HomeMonitorAPI.Services
         private readonly UserManager<ApplicationUser> userManager;
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IConfiguration _configuration;
-        private readonly ILogger _logger;
         private readonly IAuthenticationRepository _authRepository;
 
         public AuthService(UserManager<ApplicationUser> userManager, 
             RoleManager<IdentityRole> roleManager, IConfiguration configuration, 
-            ILogger logger, IAuthenticationRepository authRepository)
+            IAuthenticationRepository authRepository)
         {
             this.userManager = userManager;
             this.roleManager = roleManager;
             _configuration = configuration;
-            _logger = logger;
             _authRepository = authRepository;
         }
         
@@ -205,28 +203,25 @@ namespace HomeMonitorAPI.Services
             var refreshToken = await _authRepository.GetRefreshToken(refreshRequest.UserId);
             if (refreshToken is null)
             {
-                _logger.LogWarning("Invalid or expired refresh token.");
                 return false;
             }
-            await _authRepository.DeleteRefreshToken(refreshToken.UserId);
 
             if(refreshToken.Token != refreshRequest.RefreshToken)
             {
-                _logger.LogWarning("Refresh token does not match.");
                 return false;
             }
 
             if (refreshToken.JwtId != refreshRequest.JTI)
             {
-                _logger.LogWarning("Refresh token id does not match.");
                 return false;
             }
 
             if (refreshToken.ExpiryDate < DateTime.UtcNow || refreshToken.Invalidated)
             {
-                _logger.LogWarning("Refresh token has expired.");
+                await _authRepository.DeleteRefreshToken(refreshToken.UserId);
                 return false;
             }
+            await _authRepository.DeleteRefreshToken(refreshToken.UserId);
             return true;
         }
     }
