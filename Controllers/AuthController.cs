@@ -12,13 +12,11 @@ namespace HomeMonitorAPI.Controllers
     {
         private readonly IConfiguration _config;
         private readonly IAuthService _authService;
-        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IConfiguration config, IAuthService authService, ILogger<AuthController> logger)
+        public AuthController(IConfiguration config, IAuthService authService)//, ILogger<AuthController> logger)
         {
             _config = config;
             _authService = authService;
-            _logger = logger;
         }
 
         [HttpPost]
@@ -36,7 +34,7 @@ namespace HomeMonitorAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                //_logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
@@ -50,7 +48,7 @@ namespace HomeMonitorAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest("Invalid payload");
                 
-                RegistrationResponse registrationResponse = await _authService.Registration(registrationRequest, UserRoles.Admin);
+                RegistrationResponse registrationResponse = await _authService.Registration(registrationRequest, UserRoles.User);
                 
                 if (registrationResponse.Status == 0)
                 {
@@ -61,7 +59,7 @@ namespace HomeMonitorAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                //_logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
@@ -81,7 +79,7 @@ namespace HomeMonitorAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                //_logger.LogError(ex.Message);
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
