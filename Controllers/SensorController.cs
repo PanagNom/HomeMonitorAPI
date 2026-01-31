@@ -7,43 +7,41 @@ namespace HomeMonitorAPI.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class SensorController : ControllerBase
+    public class SensorController(ILogger<SensorController> logger, ISensorRepository sensorRepository) : ControllerBase
     {
-        private readonly ILogger<SensorController> _logger;
-        private readonly ISensorRepository _sensorRepository;
-        public SensorController(ILogger<SensorController> logger, ISensorRepository sensorRepository)
-        {
-            _logger = logger;
-            _sensorRepository = sensorRepository;
-        }
+        private readonly ILogger<SensorController> logger = logger;
+        private readonly ISensorRepository sensorRepository = sensorRepository;
 
         [HttpGet]
         [Route("GetSensorData")]
-        [Authorize(Roles = "Admin")]
+
+        // [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Sensor?>> Get()
         {
-            var reading =  await _sensorRepository.GetSensorData();
-            var test =  User.ToString();
-            if(reading == null)
+            var reading = await this.sensorRepository.GetSensorData();
+            _ = this.User.ToString();
+            if (reading == null)
             {
-                return NotFound();
+                return this.NotFound();
             }
 
-            return Ok(reading);
+            return this.Ok(reading);
         }
 
         [HttpPost]
         [Route("AddSensorData")]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<Sensor?>> Add([FromBody ] Sensor sensorData)
+
+        // [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<Sensor?>> Add([FromBody] Sensor sensorData)
         {
-            if (sensorData == null) {
-                return BadRequest("Sensor data is null.");
+            if (sensorData == null)
+            {
+                return this.BadRequest("Sensor data is null.");
             }
 
-            await _sensorRepository.AddSensorAsync(sensorData);
+            await this.sensorRepository.AddSensorAsync(sensorData);
 
-            return Ok();
+            return this.Ok();
         }
     }
 }

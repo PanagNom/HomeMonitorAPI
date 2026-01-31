@@ -4,14 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HomeMonitorAPI.Data.Repositories
 {
-    public class AuthenticationRepository: IAuthenticationRepository
+    public class AuthenticationRepository(HomeMonitorDbContext context) : IAuthenticationRepository
     {
-        private readonly HomeMonitorDbContext _context;
-
-        public AuthenticationRepository(HomeMonitorDbContext context)
-        {
-            _context = context;
-        }
+        private readonly HomeMonitorDbContext context = context;
 
         public async Task<RefreshToken?> GetRefreshToken(string userId)
         {
@@ -19,23 +14,27 @@ namespace HomeMonitorAPI.Data.Repositories
             {
                 throw new ArgumentNullException(nameof(userId), "User cannot be null or empty.");
             }
-            var refreshToken = await _context.RefreshTokens
+
+            var refreshToken = await this.context.RefreshTokens
                 .FirstOrDefaultAsync(rt => rt.UserId == userId && rt.Invalidated == false);
-            
-            if(refreshToken?.ExpiryDate < DateTime.UtcNow)
+
+            if (refreshToken?.ExpiryDate < DateTime.UtcNow)
             {
                 refreshToken.Invalidated = true;
-                _context.RefreshTokens.Update(refreshToken);
-                _context.SaveChanges();
+                this.context.RefreshTokens.Update(refreshToken);
+                this.context.SaveChanges();
                 return null;
             }
 
             return refreshToken;
         }
+
         public async Task<string?> AddRefreshToken(string userId, string jti)
         {
             if (string.IsNullOrEmpty(userId))
+            {
                 throw new ArgumentNullException(nameof(userId));
+            }
 
             var refreshToken = new Models.RefreshToken
             {
@@ -43,23 +42,25 @@ namespace HomeMonitorAPI.Data.Repositories
                 JwtId = jti,
                 Token = Guid.NewGuid().ToString(),
                 ExpiryDate = DateTime.UtcNow.AddDays(7),
-                Invalidated = false
+                Invalidated = false,
             };
 
-            await _context.RefreshTokens.AddAsync(refreshToken);
-            await _context.SaveChangesAsync();
+            await this.context.RefreshTokens.AddAsync(refreshToken);
+            await this.context.SaveChangesAsync();
 
             return refreshToken.Token;
         }
+
         async Task IAuthenticationRepository.DeleteRefreshToken(string userId)
         {
-            var refreshToken = await GetRefreshToken(userId);
+            var refreshToken = await this.GetRefreshToken(userId);
             if (refreshToken is null)
             {
-                return ;
+                return;
             }
-            _context.RefreshTokens.Remove(refreshToken);
-            _context.SaveChanges();
+
+            this.context.RefreshTokens.Remove(refreshToken);
+            this.context.SaveChanges();
         }
     }
 }

@@ -5,12 +5,10 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace HomeMonitorAPI.Data
 {
-    public class HomeMonitorDbContext : IdentityDbContext<ApplicationUser>
+    public class HomeMonitorDbContext(DbContextOptions<HomeMonitorDbContext> options) : IdentityDbContext<ApplicationUser>(options)
     {
-        public HomeMonitorDbContext(DbContextOptions<HomeMonitorDbContext> options) : base(options)
-        {
-        }
         public DbSet<Sensor> Sensors { get; set; }
+
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         public void Configure(EntityTypeBuilder<RefreshToken> builder)

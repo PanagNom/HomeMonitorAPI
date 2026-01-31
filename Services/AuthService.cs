@@ -1,42 +1,34 @@
-﻿using HomeMonitorAPI.Data.Interfaces;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using HomeMonitorAPI.Data.Interfaces;
 using HomeMonitorAPI.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace HomeMonitorAPI.Services
 {
-    public class AuthService : IAuthService
+    public class AuthService(UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager, IConfiguration configuration,
+        IAuthenticationRepository authRepository) : IAuthService
     {
-        private readonly UserManager<ApplicationUser> userManager;
-        private readonly RoleManager<IdentityRole> roleManager;
-        private readonly IConfiguration _configuration;
-        private readonly IAuthenticationRepository _authRepository;
+        private readonly UserManager<ApplicationUser> userManager = userManager;
+        private readonly RoleManager<IdentityRole> roleManager = roleManager;
+        private readonly IConfiguration configuration = configuration;
+        private readonly IAuthenticationRepository authRepository = authRepository;
 
-        public AuthService(UserManager<ApplicationUser> userManager, 
-            RoleManager<IdentityRole> roleManager, IConfiguration configuration, 
-            IAuthenticationRepository authRepository)
-        {
-            this.userManager = userManager;
-            this.roleManager = roleManager;
-            _configuration = configuration;
-            _authRepository = authRepository;
-        }
-        
         public async Task<RegistrationResponse> Registration(RegistrationRequest registrationRequest, string role)
         {
-            RegistrationResponse registrationResponse = new();
-            var userExists = await userManager.FindByNameAsync(registrationRequest.Username);
+            RegistrationResponse registrationResponse = new ();
+            var userExists = await this.userManager.FindByNameAsync(registrationRequest.Username);
             if (userExists != null)
             {
                 registrationResponse.Message = "User already exists";
                 registrationResponse.Status = 0;
-                return (registrationResponse);
+                return registrationResponse;
             }
 
-            ApplicationUser user = new()
+            ApplicationUser user = new ()
             {
                 Email = registrationRequest.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
@@ -45,22 +37,26 @@ namespace HomeMonitorAPI.Services
                 LastName = registrationRequest.LastName ?? string.Empty,
             };
 
-            var createUserResult = await userManager.CreateAsync(user, registrationRequest.Password);
+            var createUserResult = await this.userManager.CreateAsync(user, registrationRequest.Password);
             if (!createUserResult.Succeeded)
             {
                 registrationResponse.Message = "User creation failed! Please check user details and try again.";
                 registrationResponse.Status = 0;
 
-                return (registrationResponse);
+                return registrationResponse;
             }
-                
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(new IdentityRole(role));
 
-            if (await roleManager.RoleExistsAsync(role))
-                await userManager.AddToRoleAsync(user, role);
+            if (!await this.roleManager.RoleExistsAsync(role))
+            {
+                await this.roleManager.CreateAsync(new IdentityRole(role));
+            }
 
-            registrationResponse = new()
+            if (await this.roleManager.RoleExistsAsync(role))
+            {
+                await this.userManager.AddToRoleAsync(user, role);
+            }
+
+            registrationResponse = new ()
             {
                 Id = user.Id,
                 Username = user.UserName,
@@ -68,97 +64,98 @@ namespace HomeMonitorAPI.Services
                 LastName = user.LastName,
                 Email = user.Email,
                 Message = "User created successfully!",
-                Status = 1
+                Status = 1,
             };
 
-            return (registrationResponse);
+            return registrationResponse;
         }
 
         public async Task<LoginResponse> Login(LoginRequest loginRequest)
         {
-            LoginResponse loginResponse = new();
+            LoginResponse loginResponse = new ();
 
-            var user = await userManager.FindByNameAsync(loginRequest.Username);
+            var user = await this.userManager.FindByNameAsync(loginRequest.Username);
             if (user == null)
             {
                 loginResponse.Message = "Invalid username";
                 loginResponse.Status = 0;
-                return (loginResponse);
+                return loginResponse;
             }
-                
-            if (!await userManager.CheckPasswordAsync(user, loginRequest.Password))
+
+            if (!await this.userManager.CheckPasswordAsync(user, loginRequest.Password))
             {
                 loginResponse.Message = "Invalid password";
                 loginResponse.Status = 0;
-                return (loginResponse);
+                return loginResponse;
             }
 
-            var userRoles = await userManager.GetRolesAsync(user);
+            var userRoles = await this.userManager.GetRolesAsync(user);
             string jti = Guid.NewGuid().ToString();
 
             var authClaims = new List<Claim>
             {
-               new Claim(ClaimTypes.Name, user.UserName!),
-               new Claim(JwtRegisteredClaimNames.Jti, jti),
+               new (ClaimTypes.Name, user.UserName!),
+               new (JwtRegisteredClaimNames.Jti, jti),
             };
 
             foreach (var userRole in userRoles)
             {
                 authClaims.Add(new Claim(ClaimTypes.Role, userRole));
             }
-            string token = GenerateToken(authClaims);
 
-            loginResponse = new()
+            string token = this.GenerateToken(authClaims);
+
+            loginResponse = new ()
             {
                 Id = user.Id,
                 JWTID = jti,
-                Username = user.UserName?? string.Empty,
+                Username = user.UserName ?? string.Empty,
                 Token = token,
                 ExpiryDate = DateTime.UtcNow.AddMinutes(1),
-                RefreshToken = await GenerateRefreshToken(user.Id, jti),
+                RefreshToken = await this.GenerateRefreshToken(user.Id, jti),
                 Message = "Login successful",
                 Status = 1,
             };
-            
-            await userManager.UpdateAsync(user);
 
-            return (loginResponse);
+            await this.userManager.UpdateAsync(user);
+
+            return loginResponse;
         }
 
         public async Task<RefreshResponse> Refresh(RefreshRequest refreshRequest)
         {
-            RefreshResponse refreshResponse = new();
+            RefreshResponse refreshResponse = new ();
 
             if (refreshRequest is null)
             {
                 refreshResponse.Status = 0;
                 refreshResponse.Message = "Empty refresh request.";
-                return (refreshResponse);
+                return refreshResponse;
             }
-            
-            if(!await ValidateRefreshToken(refreshRequest))
+
+            if (!await this.ValidateRefreshToken(refreshRequest))
             {
                 refreshResponse.Status = 0;
                 refreshResponse.Message = "Invalid refresh token.";
-                return (refreshResponse);
+                return refreshResponse;
             }
 
-            var user = await userManager.FindByIdAsync(refreshRequest.UserId);
+            var user = await this.userManager.FindByIdAsync(refreshRequest.UserId);
 
-            var userRoles = await userManager.GetRolesAsync(user);
-            var jti  = Guid.NewGuid().ToString();
+            var userRoles = await this.userManager.GetRolesAsync(user);
+            var jti = Guid.NewGuid().ToString();
 
             if (user is null)
             {
                 refreshResponse.Status = 0;
                 refreshResponse.Message = "User not found.";
-                return (refreshResponse);
+                return refreshResponse;
             }
 
             var authClaims = new List<Claim>
             {
-               new Claim(ClaimTypes.Name, user.UserName!),
-               new Claim(JwtRegisteredClaimNames.Jti, jti),
+               new (ClaimTypes.Name, user.UserName!),
+               new (JwtRegisteredClaimNames.Jti, jti),
             };
 
             foreach (var userRole in userRoles)
@@ -166,47 +163,48 @@ namespace HomeMonitorAPI.Services
                 authClaims.Add(new Claim(ClaimTypes.Role, userRole));
             }
 
-            refreshResponse.Token = GenerateToken(authClaims);
-            refreshResponse.RefreshToken = await GenerateRefreshToken(user.Id, jti);
+            refreshResponse.Token = this.GenerateToken(authClaims);
+            refreshResponse.RefreshToken = await this.GenerateRefreshToken(user.Id, jti);
             refreshResponse.Status = 1;
             refreshResponse.Message = "Token refreshed successfully.";
 
-            return (refreshResponse);
+            return refreshResponse;
         }
 
         private string GenerateToken(IEnumerable<Claim> claims)
         {
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"]));
-            var _TokenExpiryTimeInHour = Convert.ToInt64(_configuration["Jwt:TokenExpiryTimeInHour"]);
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(this.configuration["Jwt:Secret"]));
+            _ = Convert.ToInt64(this.configuration["Jwt:TokenExpiryTimeInHour"]);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Issuer = _configuration["Jwt:Issuer"],
-                Audience = _configuration["Jwt:Audience"],
-                //Expires = DateTime.UtcNow.AddHours(_TokenExpiryTimeInHour),
+                Issuer = this.configuration["Jwt:Issuer"],
+                Audience = this.configuration["Jwt:Audience"],
+
+                // Expires = DateTime.UtcNow.AddHours(_TokenExpiryTimeInHour),
                 Expires = DateTime.UtcNow.AddMinutes(1),
                 SigningCredentials = new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256),
-                Subject = new ClaimsIdentity(claims)
+                Subject = new ClaimsIdentity(claims),
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
-        
+
         private async Task<string?> GenerateRefreshToken(string userId, string jti)
         {
-            return await _authRepository.AddRefreshToken(userId, jti);
+            return await this.authRepository.AddRefreshToken(userId, jti);
         }
 
         private async Task<bool> ValidateRefreshToken(RefreshRequest refreshRequest)
         {
-            var refreshToken = await _authRepository.GetRefreshToken(refreshRequest.UserId);
+            var refreshToken = await this.authRepository.GetRefreshToken(refreshRequest.UserId);
             if (refreshToken is null)
             {
                 return false;
             }
 
-            if(refreshToken.Token != refreshRequest.RefreshToken)
+            if (refreshToken.Token != refreshRequest.RefreshToken)
             {
                 return false;
             }
@@ -218,10 +216,11 @@ namespace HomeMonitorAPI.Services
 
             if (refreshToken.ExpiryDate < DateTime.UtcNow || refreshToken.Invalidated)
             {
-                await _authRepository.DeleteRefreshToken(refreshToken.UserId);
+                await this.authRepository.DeleteRefreshToken(refreshToken.UserId);
                 return false;
             }
-            await _authRepository.DeleteRefreshToken(refreshToken.UserId);
+
+            await this.authRepository.DeleteRefreshToken(refreshToken.UserId);
             return true;
         }
     }

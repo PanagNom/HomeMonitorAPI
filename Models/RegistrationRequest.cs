@@ -6,8 +6,10 @@ namespace HomeMonitorAPI.Models
     {
         [Required(ErrorMessage = "User Name is required")]
         public string Username { get; set; }
+
         [Required(ErrorMessage = "Name is required")]
         public string? FirstName { get; set; }
+
         public string? LastName { get; set; }
 
         [EmailAddress]

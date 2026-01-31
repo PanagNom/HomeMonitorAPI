@@ -20,7 +20,7 @@ namespace HomeMonitorAPI.Migrations
                     Humidity = table.Column<int>(type: "int", nullable: false),
                     Sound = table.Column<int>(type: "int", nullable: false),
                     Light = table.Column<int>(type: "int", nullable: false),
-                    Presence = table.Column<bool>(type: "bit", nullable: false)
+                    Presence = table.Column<bool>(type: "bit", nullable: false),
                 },
                 constraints: table =>
                 {

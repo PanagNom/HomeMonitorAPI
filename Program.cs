@@ -1,3 +1,4 @@
+using System.Text;
 using HomeMonitorAPI.Data;
 using HomeMonitorAPI.Data.Interfaces;
 using HomeMonitorAPI.Data.Repositories;
@@ -7,13 +8,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -23,9 +23,8 @@ builder.Services.AddTransient<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuthenticationRepository, AuthenticationRepository>();
 
 builder.Services.AddDbContext<HomeMonitorDbContext>(
-    options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? 
-    throw new InvalidOperationException("Connection string 'HomeMonitorDbContext' not found.")
-    ));
+    options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ??
+    throw new InvalidOperationException("Connection string 'HomeMonitorDbContext' not found.")));
 
 builder.Services.AddCors(options =>
 {
@@ -39,13 +38,14 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<ISensorRepository, SensorRepository>();
 
-// For Identity  
+// For Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<HomeMonitorDbContext>()
                 .AddDefaultTokenProviders();
 
 // Configure JWT Authentication
-builder.Services.AddAuthentication(options => {
+builder.Services.AddAuthentication(options =>
+{
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
@@ -60,7 +60,7 @@ builder.Services.AddAuthentication(options => {
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]))
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"])),
         };
     });
 

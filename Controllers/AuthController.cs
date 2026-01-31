@@ -1,23 +1,17 @@
-﻿using HomeMonitorAPI.Models;
+﻿using System.Text;
+using HomeMonitorAPI.Models;
 using HomeMonitorAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 namespace HomeMonitorAPI.Controllers
 {
     [ApiController]
     [Route("api/auth")]
-    public class AuthController : ControllerBase
+    public class AuthController(IConfiguration config, IAuthService authService) : ControllerBase
     {
-        private readonly IConfiguration _config;
-        private readonly IAuthService _authService;
-
-        public AuthController(IConfiguration config, IAuthService authService)//, ILogger<AuthController> logger)
-        {
-            _config = config;
-            _authService = authService;
-        }
+        private readonly IConfiguration config = config;
+        private readonly IAuthService authService = authService;
 
         [HttpPost]
         [Route("login")]
@@ -25,17 +19,23 @@ namespace HomeMonitorAPI.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid payload");
-                LoginResponse loginResponse = await _authService.Login(loginRequest);
+                if (!this.ModelState.IsValid)
+                {
+                    return this.BadRequest("Invalid payload");
+                }
+
+                LoginResponse loginResponse = await this.authService.Login(loginRequest);
                 if (loginResponse.Status == 0)
-                    return BadRequest(loginResponse.Message);
-                return Ok(loginResponse);
+                {
+                    return this.BadRequest(loginResponse.Message);
+                }
+
+                return this.Ok(loginResponse);
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex.Message);
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                // _logger.LogError(ex.Message);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
@@ -45,22 +45,24 @@ namespace HomeMonitorAPI.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid payload");
-                
-                RegistrationResponse registrationResponse = await _authService.Registration(registrationRequest, UserRoles.User);
-                
+                if (!this.ModelState.IsValid)
+                {
+                    return this.BadRequest("Invalid payload");
+                }
+
+                RegistrationResponse registrationResponse = await this.authService.Registration(registrationRequest, UserRoles.User);
+
                 if (registrationResponse.Status == 0)
                 {
-                    return BadRequest(registrationResponse.Message);
+                    return this.BadRequest(registrationResponse.Message);
                 }
-                return CreatedAtAction(nameof(Register), registrationResponse);
 
+                return this.CreatedAtAction(nameof(this.Register), registrationResponse);
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex.Message);
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                // _logger.LogError(ex.Message);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
@@ -71,18 +73,23 @@ namespace HomeMonitorAPI.Controllers
             try
             {
                 if (string.IsNullOrEmpty(refreshRequest.UserId))
-                    return BadRequest("Invalid payload");
-                RefreshResponse refreshResponse = await _authService.Refresh(refreshRequest);
+                {
+                    return this.BadRequest("Invalid payload");
+                }
+
+                RefreshResponse refreshResponse = await this.authService.Refresh(refreshRequest);
                 if (refreshResponse.Status == 0)
-                    return BadRequest(refreshResponse.Message);
-                return Ok(refreshResponse);
+                {
+                    return this.BadRequest(refreshResponse.Message);
+                }
+
+                return this.Ok(refreshResponse);
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex.Message);
-                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+                // _logger.LogError(ex.Message);
+                return this.StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
-
     }
 }

@@ -19,7 +19,19 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="F:\VisualStudio\HomeMonitorAPI\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="F:\VisualStudio\HomeMonitorAPI\.editorconfig" />
   </ItemGroup>
 
 </Project>
